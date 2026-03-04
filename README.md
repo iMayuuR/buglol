@@ -117,10 +117,10 @@ which paplay
 
 ---
 
-## � Troubleshooting — No Sound?
+## 🚫🔊 Troubleshooting — No Sound?
 
 **1. No sound file selected yet**
-- Click the `� BugLOL` button in the status bar → search and select a sound first.
+- Click the **BugLOL** button (bottom status bar) → search and select a sound first.
 
 **2. Sound file not downloaded**
 - Select a sound again from the BugLOL panel — it will re-download automatically.

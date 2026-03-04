@@ -22,7 +22,26 @@
     "meme",
     "funny",
     "sound effect",
-    "buglol"
+    "buglol",
+    "error sound",
+    "bug sound",
+    "debug",
+    "debugging",
+    "fun",
+    "comedy",
+    "troll",
+    "prank",
+    "audio",
+    "notification",
+    "alert",
+    "terminal error",
+    "terminal sound",
+    "coding fun",
+    "developer tools",
+    "meme sound",
+    "trending sounds",
+    "sound board",
+    "error alert"
   ],
   "activationEvents": [
     "onStartupFinished"

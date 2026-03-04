@@ -1,14 +1,22 @@
 # BugLOL Audio Player — Persistent Background Process
-# This script stays alive and reads sound file paths from stdin.
-# The .NET MediaPlayer is loaded ONCE, eliminating startup delay.
+# Uses Win32 mciSendString API for reliable MP3 playback.
+# No STA/MTA/WPF dispatcher required — works in any headless process.
 
-Add-Type -AssemblyName presentationCore
-$player = New-Object System.Windows.Media.MediaPlayer
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public class BugLOLMCI {
+    [DllImport("winmm.dll", CharSet = CharSet.Auto)]
+    public static extern int mciSendString(string lpstrCommand, StringBuilder lpstrReturnString, int uReturnLength, IntPtr hwndCallback);
+}
+"@
 
 # Signal that we are ready
 Write-Output "READY"
 
-# Continuously read file paths from stdin and play them
+$alias = "buglolAudio"
+
 while ($true) {
     $line = [Console]::In.ReadLine()
     if ($null -eq $line) { break }
@@ -17,28 +25,23 @@ while ($true) {
     if ($audioPath -eq "" -or $audioPath -eq "EXIT") { break }
 
     try {
-        $player.Stop()
-        $player.Close()
-        $player.Open([Uri]::new($audioPath))
+        # Close any previous instance first
+        [BugLOLMCI]::mciSendString("close $alias", $null, 0, [IntPtr]::Zero) | Out-Null
 
-        # Small wait for media to open (much less than before)
-        Start-Sleep -Milliseconds 30
+        # Open the MP3 file
+        $ret = [BugLOLMCI]::mciSendString("open `"$audioPath`" type mpegvideo alias $alias", $null, 0, [IntPtr]::Zero)
 
-        $player.Play()
-
-        # Wait for playback to finish
-        $retries = 0
-        while (-not $player.NaturalDuration.HasTimeSpan -and $retries -lt 20) {
-            Start-Sleep -Milliseconds 25
-            $retries++
+        if ($ret -eq 0) {
+            # Play and wait for completion
+            [BugLOLMCI]::mciSendString("play $alias wait", $null, 0, [IntPtr]::Zero) | Out-Null
+            [BugLOLMCI]::mciSendString("close $alias", $null, 0, [IntPtr]::Zero) | Out-Null
         }
-
-        if ($player.NaturalDuration.HasTimeSpan) {
-            Start-Sleep -Seconds $player.NaturalDuration.TimeSpan.TotalSeconds
+        else {
+            [Console]::Error.WriteLine("BugLOL: mciSendString open failed with code $ret for: $audioPath")
         }
     }
     catch {
-        # Silently continue on error
+        [Console]::Error.WriteLine("BugLOL ERROR: $_")
     }
 
     Write-Output "DONE"

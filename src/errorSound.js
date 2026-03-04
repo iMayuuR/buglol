@@ -3,100 +3,97 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
+const PLATFORM = process.platform; // 'win32' | 'darwin' | 'linux'
+
 /** @type {import('child_process').ChildProcess | null} */
-let audioProcess = null;
-let isReady = false;
-let pendingPlay = null;
+let currentSoundProcess = null;
 
-/**
- * Spawns the persistent background PowerShell audio player.
- * The .NET MediaPlayer is loaded ONCE — subsequent plays are near-instant.
- * @param {vscode.ExtensionContext} context
- */
-function spawnAudioProcess(context) {
-    if (audioProcess && !audioProcess.killed) return;
+// ─── Windows: wscript.exe + VBScript (works on ALL Windows, no PS needed) ───
+function playSoundWindows(context, soundPath) {
+    // Kill previous sound if still playing
+    if (currentSoundProcess && !currentSoundProcess.killed) {
+        try { currentSoundProcess.kill(); } catch (_) { }
+    }
 
-    const psScriptPath = path.join(context.extensionPath, 'playAudio.ps1');
-    isReady = false;
+    const vbsScript = path.join(context.extensionPath, 'playAudio.vbs');
 
-    audioProcess = spawn('powershell', [
-        '-ExecutionPolicy', 'Bypass',
-        '-NoProfile',
-        '-File', psScriptPath
-    ], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+    const proc = spawn('wscript.exe', ['//B', vbsScript, soundPath], {
+        stdio: 'ignore',
         windowsHide: true
     });
 
-    audioProcess.stdout.on('data', (data) => {
-        const msg = data.toString().trim();
-        if (msg === 'READY') {
-            isReady = true;
-            console.log('[BugLOL] Audio player ready (background process)');
-            // If a sound was requested before ready, play it now
-            if (pendingPlay) {
-                sendPlayCommand(pendingPlay);
-                pendingPlay = null;
-            }
+    currentSoundProcess = proc;
+
+    proc.on('error', (err) => {
+        console.error(`[BugLOL] wscript.exe error: ${err.message}`);
+    });
+
+    proc.on('exit', (code) => {
+        if (code !== 0 && code !== null) {
+            console.warn(`[BugLOL] wscript.exe exited with code ${code}`);
         }
-    });
-
-    audioProcess.stderr.on('data', (data) => {
-        console.error(`[BugLOL] Audio error: ${data.toString().trim()}`);
-    });
-
-    audioProcess.on('close', (code) => {
-        console.log(`[BugLOL] Audio process exited with code ${code}`);
-        audioProcess = null;
-        isReady = false;
-    });
-
-    audioProcess.on('error', (err) => {
-        console.error(`[BugLOL] Failed to spawn audio process: ${err.message}`);
-        audioProcess = null;
-        isReady = false;
+        if (currentSoundProcess === proc) currentSoundProcess = null;
     });
 }
 
-/**
- * Sends a file path to the persistent audio process for playback.
- * @param {string} soundPath
- */
-function sendPlayCommand(soundPath) {
-    if (!audioProcess || audioProcess.killed || !audioProcess.stdin.writable) {
-        console.warn('[BugLOL] Audio process not available');
+// ─── macOS: afplay (built-in, supports MP3 natively) ────────────────────────
+function playSoundMac(soundPath) {
+    if (currentSoundProcess && !currentSoundProcess.killed) {
+        try { currentSoundProcess.kill(); } catch (_) { }
+    }
+    const proc = spawn('afplay', [soundPath], { stdio: 'ignore' });
+    currentSoundProcess = proc;
+    proc.on('error', (err) => console.error(`[BugLOL] afplay error: ${err.message}`));
+    proc.on('exit', () => { if (currentSoundProcess === proc) currentSoundProcess = null; });
+}
+
+// ─── Linux: mpg123 → ffplay → paplay fallback chain ─────────────────────────
+const LINUX_PLAYERS = [
+    { cmd: 'mpg123', args: (f) => ['-q', f] },
+    { cmd: 'ffplay', args: (f) => ['-nodisp', '-autoexit', '-loglevel', 'quiet', f] },
+    { cmd: 'paplay', args: (f) => [f] },
+];
+
+function playSoundLinux(soundPath, playerIndex = 0) {
+    if (playerIndex >= LINUX_PLAYERS.length) {
+        console.error('[BugLOL] No audio player found on Linux. Install mpg123 or ffplay.');
         return;
     }
-    audioProcess.stdin.write(soundPath + '\n');
+    if (currentSoundProcess && !currentSoundProcess.killed) {
+        try { currentSoundProcess.kill(); } catch (_) { }
+    }
+    const { cmd, args } = LINUX_PLAYERS[playerIndex];
+    const proc = spawn(cmd, args(soundPath), { stdio: 'ignore' });
+    currentSoundProcess = proc;
+    proc.on('error', () => {
+        console.warn(`[BugLOL] ${cmd} not found, trying next...`);
+        playSoundLinux(soundPath, playerIndex + 1);
+    });
+    proc.on('exit', () => { if (currentSoundProcess === proc) currentSoundProcess = null; });
 }
 
+// ─── Unified playSound ───────────────────────────────────────────────────────
 /**
- * Plays the selected error sound with minimal latency.
+ * Plays the selected error sound. Cross-platform.
  * @param {vscode.ExtensionContext} context
  */
 function playSound(context) {
     const config = vscode.workspace.getConfiguration('errorSoundEffect');
     const selectedSoundFile = config.get('selectedSoundFilename', '');
-
     if (!selectedSoundFile) return;
 
     const soundPath = path.join(context.globalStorageUri.fsPath, selectedSoundFile);
-
     if (!fs.existsSync(soundPath)) {
         console.warn(`[BugLOL] Sound file not found: ${soundPath}`);
         return;
     }
 
-    // Respawn if process died
-    if (!audioProcess || audioProcess.killed) {
-        spawnAudioProcess(context);
-    }
-
-    if (isReady) {
-        sendPlayCommand(soundPath);
+    if (PLATFORM === 'win32') {
+        playSoundWindows(context, soundPath);
+    } else if (PLATFORM === 'darwin') {
+        playSoundMac(soundPath);
     } else {
-        // Queue it — will play as soon as process is ready
-        pendingPlay = soundPath;
+        playSoundLinux(soundPath);
     }
 }
 
@@ -106,38 +103,39 @@ function playSound(context) {
  */
 function activate(context) {
     let lastErrorCount = 0;
+    let debounceTimer = null;
 
-    // Pre-spawn the audio process on activation for instant readiness
-    if (process.platform === 'win32') {
-        spawnAudioProcess(context);
-    }
+    console.log(`[BugLOL] Platform: ${PLATFORM} — audio engine ready`);
 
-    // Listen to changes in diagnostics (problems panel)
-    const diagnosticsDisposable = vscode.languages.onDidChangeDiagnostics((e) => {
-        let currentErrorCount = 0;
+    // Listen to changes in diagnostics (problems panel).
+    // Debounced 300ms: language servers often fire multiple rapid events
+    // for the same save (one per file). Without debounce you'd get
+    // N sounds for N files with errors simultaneously.
+    const diagnosticsDisposable = vscode.languages.onDidChangeDiagnostics(() => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            try {
+                let currentErrorCount = 0;
+                vscode.languages.getDiagnostics().forEach(([, diagnostics]) => {
+                    currentErrorCount += diagnostics.filter(
+                        (d) => d.severity === vscode.DiagnosticSeverity.Error
+                    ).length;
+                });
 
-        vscode.languages.getDiagnostics().forEach(([uri, diagnostics]) => {
-            const errorDiagnostics = diagnostics.filter(
-                (d) => d.severity === vscode.DiagnosticSeverity.Error
-            );
-            currentErrorCount += errorDiagnostics.length;
-        });
-
-        // If the number of errors increased, play the sound
-        if (currentErrorCount > lastErrorCount) {
-            playSound(context);
-        }
-
-        lastErrorCount = currentErrorCount;
+                if (currentErrorCount > lastErrorCount) {
+                    playSound(context);
+                }
+                lastErrorCount = currentErrorCount;
+            } catch (err) {
+                console.error('[BugLOL] Diagnostics handler error:', err.message);
+            }
+        }, 300);
     });
-
     context.subscriptions.push(diagnosticsDisposable);
 
-    // --- Terminal Error Detection ---
-    // Plays sound when a terminal command fails (non-zero exit code)
+    // Terminal error detection (VS Code 1.93+)
     if (vscode.window.onDidEndTerminalShellExecution) {
         const terminalDisposable = vscode.window.onDidEndTerminalShellExecution((e) => {
-            // exitCode !== 0 means the command failed
             if (e.exitCode !== undefined && e.exitCode !== 0) {
                 console.log(`[BugLOL] Terminal command failed with exit code ${e.exitCode}`);
                 playSound(context);
@@ -145,20 +143,13 @@ function activate(context) {
         });
         context.subscriptions.push(terminalDisposable);
         console.log('[BugLOL] Terminal error detection enabled');
-    } else {
-        console.log('[BugLOL] Terminal shell execution API not available (requires VS Code 1.93+)');
     }
 
     // Cleanup on deactivation
     context.subscriptions.push({
         dispose: () => {
-            if (audioProcess && !audioProcess.killed) {
-                try {
-                    audioProcess.stdin.write('EXIT\n');
-                    audioProcess.kill();
-                } catch (e) {
-                    // ignore
-                }
+            if (currentSoundProcess && !currentSoundProcess.killed) {
+                try { currentSoundProcess.kill(); } catch (_) { }
             }
         }
     });

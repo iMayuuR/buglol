@@ -4,19 +4,43 @@ const vscode = require('vscode');
  * @param {import('vscode').ExtensionContext} context
  */
 function activate(context) {
-    console.log('Congratulations, your extension "error-sound-effect" is now active!');
+    try {
+        console.log('[BugLOL] Extension activating...');
 
-    const soundManager = require('./soundManager.js');
-    soundManager.registerSelectSoundCommand(context);
-    soundManager.checkInitialSoundState(context);
+        // ── Sound Manager (command palette + initial state) ──────────────────
+        try {
+            const soundManager = require('./soundManager.js');
+            soundManager.registerSelectSoundCommand(context);
+            soundManager.checkInitialSoundState(context);
+        } catch (err) {
+            console.error('[BugLOL] soundManager failed to load:', err.message);
+            // Non-fatal — sound selection UI won't work but diagnostics listener still will
+        }
 
-    // --- Status Bar Button (always visible) ---
-    createStatusBarButton(context);
+        // ── Status Bar ────────────────────────────────────────────────────────
+        try {
+            createStatusBarButton(context);
+        } catch (err) {
+            console.error('[BugLOL] Status bar failed:', err.message);
+        }
 
-    // --- Welcome Notification (first install only) ---
-    showWelcomeOnFirstInstall(context);
+        // ── Welcome notification (first install only) ─────────────────────────
+        showWelcomeOnFirstInstall(context).catch((err) => {
+            console.warn('[BugLOL] Welcome notification failed:', err.message);
+        });
 
-    require('./errorSound.js').activate(context);
+        // ── Core error sound listener ─────────────────────────────────────────
+        try {
+            require('./errorSound.js').activate(context);
+        } catch (err) {
+            console.error('[BugLOL] errorSound failed to activate:', err.message);
+        }
+
+        console.log('[BugLOL] Extension activated successfully.');
+    } catch (err) {
+        // Last-resort catch — extension host should never crash
+        console.error('[BugLOL] Critical activation failure:', err.message);
+    }
 }
 
 /**
@@ -53,7 +77,6 @@ function createStatusBarButton(context) {
 
 /**
  * Shows a welcome notification only on the very first install.
- * Uses globalState to track whether user has seen it.
  * @param {vscode.ExtensionContext} context
  */
 async function showWelcomeOnFirstInstall(context) {

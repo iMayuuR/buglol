@@ -444,6 +444,118 @@
       border: 1px solid rgba(34,197,94,0.15);
     }
 
+    /* ─── TRY IT SECTION ─── */
+    .try-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .try-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .try-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .try-card:hover {
+      border-color: rgba(250,204,21,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .try-card:hover::before { opacity: 1; }
+    .try-card.playing {
+      border-color: var(--accent);
+      box-shadow: 0 0 30px var(--accent-glow), 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .try-card.playing::before { opacity: 1; }
+    .try-card-inner {
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+    }
+    .try-play-btn {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: rgba(250,204,21,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+    }
+    .try-play-btn svg { width: 28px; height: 28px; fill: var(--accent); transition: all 0.2s; }
+    .try-play-btn:hover {
+      border-color: var(--accent);
+      background: rgba(250,204,21,0.1);
+      transform: scale(1.08);
+    }
+    .try-card.playing .try-play-btn {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      animation: pulseGlow 1.5s ease-in-out infinite;
+    }
+    .try-card.playing .try-play-btn svg { fill: #0a0a0f; }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(250,204,21,0.3); }
+      50% { box-shadow: 0 0 0 12px rgba(250,204,21,0); }
+    }
+    .try-card h3 {
+      font-family: 'Clash Display', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .try-card .try-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(250,204,21,0.08);
+      color: var(--accent);
+      border: 1px solid rgba(250,204,21,0.12);
+    }
+    .try-progress {
+      width: 100%;
+      height: 3px;
+      background: rgba(255,255,255,0.05);
+      position: relative;
+      overflow: hidden;
+    }
+    .try-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.1s linear;
+    }
+    .try-disclaimer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+    @media (max-width: 768px) {
+      .try-grid { grid-template-columns: 1fr; }
+    }
+
     /* ─── FINAL CTA ─── */
     .final-cta {
       text-align: center;
@@ -569,6 +681,7 @@
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#how">How it Works</a>
+      <a href="#tryit">Try It</a>
       <a href="#ides">IDEs</a>
       <a href="#platforms">Platforms</a>
       <a href="https://github.com/iMayuuR/BugLOL" target="_blank" class="nav-github">
@@ -584,6 +697,7 @@
   <div class="mobile-nav" id="mobileNav">
     <a href="#features" onclick="closeMobileMenu()">Features</a>
     <a href="#how" onclick="closeMobileMenu()">How it Works</a>
+    <a href="#tryit" onclick="closeMobileMenu()">Try It</a>
     <a href="#ides" onclick="closeMobileMenu()">IDEs</a>
     <a href="#platforms" onclick="closeMobileMenu()">Platforms</a>
     <a href="https://github.com/iMayuuR/BugLOL" target="_blank">GitHub</a>
@@ -710,6 +824,61 @@
           <p>Every error triggers your selected sound. The more bugs, the more fun. Simple as that.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TRY IT -->
+  <section id="tryit">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-label">Try It Now</div>
+        <h2 class="section-title">Hear What Your Bugs Sound Like</h2>
+        <p class="section-desc">These are real sounds from the BugLOL library. Click play and imagine this firing every time your code errors out.</p>
+      </div>
+
+      <div class="try-grid">
+        <div class="try-card reveal" data-sound="samples/chin-tapak-dum-dum.mp3">
+          <div class="try-card-inner">
+            <button class="try-play-btn" onclick="toggleTrySound(this)" aria-label="Play Chin Tapak Dum Dum">
+              <svg viewBox="0 0 24 24" class="icon-play"><polygon points="6,3 20,12 6,21"/></svg>
+              <svg viewBox="0 0 24 24" class="icon-pause" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+            </button>
+            <h3>Chin Tapak Dum Dum</h3>
+            <span class="try-tag">Viral Meme</span>
+          </div>
+          <div class="try-progress"><div class="try-progress-bar"></div></div>
+        </div>
+
+        <div class="try-card reveal" data-sound="samples/khopdi-tor-salay-ka.mp3">
+          <div class="try-card-inner">
+            <button class="try-play-btn" onclick="toggleTrySound(this)" aria-label="Play Khopdi Tod">
+              <svg viewBox="0 0 24 24" class="icon-play"><polygon points="6,3 20,12 6,21"/></svg>
+              <svg viewBox="0 0 24 24" class="icon-pause" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+            </button>
+            <h3>Khopdi Tod Saale Ka</h3>
+            <span class="try-tag">Classic Meme</span>
+          </div>
+          <div class="try-progress"><div class="try-progress-bar"></div></div>
+        </div>
+
+        <div class="try-card reveal" data-sound="samples/spiderman-meme-song.mp3">
+          <div class="try-card-inner">
+            <button class="try-play-btn" onclick="toggleTrySound(this)" aria-label="Play Spiderman Meme">
+              <svg viewBox="0 0 24 24" class="icon-play"><polygon points="6,3 20,12 6,21"/></svg>
+              <svg viewBox="0 0 24 24" class="icon-pause" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+            </button>
+            <h3>Spiderman Meme Song</h3>
+            <span class="try-tag">Trending</span>
+          </div>
+          <div class="try-progress"><div class="try-progress-bar"></div></div>
+        </div>
+      </div>
+
+      <p class="try-disclaimer">
+        Audio clips are user-generated content from public sources for demo purposes only. All copyrights belong to their original creators.
+      </p>
     </div>
   </section>
 
@@ -882,6 +1051,57 @@
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Try It audio player
+    let currentAudio = null;
+    let currentCard = null;
+    let progressRAF = null;
+
+    function stopCurrent() {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        cancelAnimationFrame(progressRAF);
+      }
+      if (currentCard) {
+        currentCard.classList.remove('playing');
+        currentCard.querySelector('.icon-play').style.display = '';
+        currentCard.querySelector('.icon-pause').style.display = 'none';
+        currentCard.querySelector('.try-progress-bar').style.width = '0%';
+      }
+      currentAudio = null;
+      currentCard = null;
+    }
+
+    function updateProgress() {
+      if (!currentAudio || !currentCard) return;
+      const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
+      currentCard.querySelector('.try-progress-bar').style.width = pct + '%';
+      if (!currentAudio.paused) progressRAF = requestAnimationFrame(updateProgress);
+    }
+
+    function toggleTrySound(btn) {
+      const card = btn.closest('.try-card');
+      const src = card.dataset.sound;
+
+      if (currentCard === card && currentAudio && !currentAudio.paused) {
+        stopCurrent();
+        return;
+      }
+
+      stopCurrent();
+
+      currentCard = card;
+      currentAudio = new Audio(src);
+      card.classList.add('playing');
+      card.querySelector('.icon-play').style.display = 'none';
+      card.querySelector('.icon-pause').style.display = '';
+
+      currentAudio.play();
+      progressRAF = requestAnimationFrame(updateProgress);
+
+      currentAudio.addEventListener('ended', () => stopCurrent());
+    }
   </script>
 </body>
 </html>

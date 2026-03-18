@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 let cachedSounds = null;
+let previewAudioCleanup = null;
 
 // Runtime endpoint resolver
 const _d = (b) => Buffer.from(b, 'base64').toString('utf8');
@@ -128,19 +129,24 @@ function downloadSound(url, destPath) {
  * @param {vscode.ExtensionContext} context 
  */
 function registerSelectSoundCommand(context) {
+    const { playSoundFile, stopSound } = require('./errorSound.js');
+
+    const previewButton = { iconPath: new vscode.ThemeIcon('play'), tooltip: 'Preview this sound' };
+
     const disposable = vscode.commands.registerCommand('errorSoundEffect.selectSound', async () => {
         try {
             const quickPick = vscode.window.createQuickPick();
-            quickPick.placeholder = 'Type to search from thousands of sounds... (Shows trending initially)';
+            quickPick.placeholder = 'Type to search sounds... (▶ to preview, Enter to select)';
             quickPick.busy = true;
             quickPick.matchOnDescription = false;
             quickPick.matchOnDetail = false;
             quickPick.show();
 
             const mapItemsToQuickPick = (items) => items.map(item => ({
-                label: `$(play) ${item.title}`,
+                label: item.title,
                 description: item.filename,
                 detail: item.duration ? `Duration: ${parseFloat(item.duration).toFixed(1)}s` : '',
+                buttons: [previewButton],
                 itemData: item
             }));
 
@@ -152,7 +158,6 @@ function registerSelectSoundCommand(context) {
                 vscode.window.showErrorMessage('Failed to load sounds: ' + e.message);
             });
 
-            // Handle debounce search
             let timeout;
             quickPick.onDidChangeValue((value) => {
                 clearTimeout(timeout);
@@ -172,17 +177,65 @@ function registerSelectSoundCommand(context) {
                 }, 500);
             });
 
-            // Handle selection
+            // Clean all preview temp files so extension storage stays neat
+            function cleanupPreviewFiles() {
+                const storagePath = context.globalStorageUri.fsPath;
+                if (!fs.existsSync(storagePath)) return;
+                if (previewAudioCleanup) {
+                    clearTimeout(previewAudioCleanup);
+                    previewAudioCleanup = null;
+                }
+                try {
+                    const files = fs.readdirSync(storagePath);
+                    files.forEach((f) => {
+                        if (f.startsWith('_preview_')) {
+                            try { fs.unlinkSync(path.join(storagePath, f)); } catch (_) { }
+                        }
+                    });
+                } catch (_) { }
+            }
+
+            // Preview sound on button click (temp file cleaned on panel close or after 30s)
+            quickPick.onDidTriggerItemButton(async (e) => {
+                const item = e.item.itemData;
+                if (!item) return;
+
+                const storagePath = context.globalStorageUri.fsPath;
+                if (!fs.existsSync(storagePath)) fs.mkdirSync(storagePath, { recursive: true });
+
+                cleanupPreviewFiles();
+                const tempFile = path.join(storagePath, `_preview_${item.filename}`);
+                const soundUrl = `https://${_HOST}${_MEDIA}${item.filename}`;
+
+                try {
+                    await downloadSound(soundUrl, tempFile);
+                    playSoundFile(context, tempFile);
+
+                    previewAudioCleanup = setTimeout(() => {
+                        try { fs.unlinkSync(tempFile); } catch (_) { }
+                        previewAudioCleanup = null;
+                    }, 30000);
+                } catch (err) {
+                    console.warn('[BugLOL] Preview failed:', err.message);
+                }
+            });
+
             quickPick.onDidAccept(async () => {
                 const selection = quickPick.selectedItems[0];
                 if (!selection) return;
 
+                stopSound();
+                cleanupPreviewFiles();
                 quickPick.hide();
                 await handleSoundSelection(context, selection.itemData);
                 quickPick.dispose();
             });
 
-            quickPick.onDidHide(() => quickPick.dispose());
+            quickPick.onDidHide(() => {
+                stopSound();
+                cleanupPreviewFiles();
+                quickPick.dispose();
+            });
 
         } catch (error) {
             vscode.window.showErrorMessage(`Error opening Select Sound menu: ${error.message}`);

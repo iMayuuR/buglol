@@ -2,6 +2,22 @@
 
 All notable changes to BugLOL will be documented in this file.
 
+## [1.5.0] - 2026-03-18
+
+### ✨ New
+- **Two status bar items** — (1) **BugLOL** opens the sound search list on click. (2) **Speaker icon** toggles BugLOL on/off. When off, both items show mute icon and warning style so the state is clear at a glance.
+
+## [1.4.0] - 2026-03-18
+
+### ✨ New Features
+- **🎧 Sound Preview** — Preview any sound before selecting it! Each sound in the search panel now has a ▶ play button to hear it first.
+- **🔇 On/Off Toggle** — Click the BugLOL status bar button to instantly toggle sounds on/off without uninstalling. Visual feedback with mute/unmute icon.
+
+### 🛠️ Improvements
+- Status bar tooltip now shows current state (enabled/disabled) and keyboard shortcut hint.
+- Preview sounds auto-cleanup after 30 seconds to save disk space.
+- Sound stops automatically when closing the search panel.
+
 ## [1.3.7] - 2026-03-18
 
 ### ✨ Updates

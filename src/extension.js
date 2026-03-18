@@ -1,5 +1,10 @@
 const vscode = require('vscode');
 
+/** @type {vscode.StatusBarItem} */
+let statusBarItemSound;
+/** @type {vscode.StatusBarItem} */
+let statusBarItemToggle;
+
 /**
  * @param {import('vscode').ExtensionContext} context
  */
@@ -14,15 +19,22 @@ function activate(context) {
             soundManager.checkInitialSoundState(context);
         } catch (err) {
             console.error('[BugLOL] soundManager failed to load:', err.message);
-            // Non-fatal — sound selection UI won't work but diagnostics listener still will
         }
 
-        // ── Status Bar ────────────────────────────────────────────────────────
+        // ── Status Bar (2 items: sound list + on/off toggle) ─────────────────
         try {
-            createStatusBarButton(context);
+            createStatusBarButtons(context);
         } catch (err) {
             console.error('[BugLOL] Status bar failed:', err.message);
         }
+
+        // ── Toggle command ────────────────────────────────────────────────────
+        const toggleDisposable = vscode.commands.registerCommand('errorSoundEffect.toggleEnabled', () => {
+            const config = vscode.workspace.getConfiguration('errorSoundEffect');
+            const current = config.get('enabled', true);
+            config.update('enabled', !current, vscode.ConfigurationTarget.Global);
+        });
+        context.subscriptions.push(toggleDisposable);
 
         // ── Welcome notification (first install only) ─────────────────────────
         showWelcomeOnFirstInstall(context).catch((err) => {
@@ -38,41 +50,66 @@ function activate(context) {
 
         console.log('[BugLOL] Extension activated successfully.');
     } catch (err) {
-        // Last-resort catch — extension host should never crash
         console.error('[BugLOL] Critical activation failure:', err.message);
     }
 }
 
 /**
- * Creates a persistent status bar button for quick sound search access.
+ * Creates two status bar items: (1) BugLOL — opens sound list (2) speaker icon — toggles on/off.
+ * Both reflect enabled state: when off, both show mute and BugLOL looks disabled.
  * @param {vscode.ExtensionContext} context
  */
-function createStatusBarButton(context) {
-    const statusBarItem = vscode.window.createStatusBarItem(
+function createStatusBarButtons(context) {
+    // Left: BugLOL — click opens sound search
+    statusBarItemSound = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Right,
+        99
+    );
+    statusBarItemSound.command = 'errorSoundEffect.selectSound';
+
+    // Right: speaker icon — click toggles on/off
+    statusBarItemToggle = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Right,
         100
     );
+    statusBarItemToggle.command = 'errorSoundEffect.toggleEnabled';
 
-    const config = vscode.workspace.getConfiguration('errorSoundEffect');
-    const currentSound = config.get('selectedSoundName', 'Fahhh');
+    updateStatusBar();
+    statusBarItemSound.show();
+    statusBarItemToggle.show();
+    context.subscriptions.push(statusBarItemSound);
+    context.subscriptions.push(statusBarItemToggle);
 
-    statusBarItem.text = `$(unmute) BugLOL`;
-    statusBarItem.tooltip = `🎵 Current Sound: ${currentSound}\nClick to search & change sounds`;
-    statusBarItem.command = 'errorSoundEffect.selectSound';
-    statusBarItem.show();
-
-    context.subscriptions.push(statusBarItem);
-
-    // Update tooltip when config changes
     const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration('errorSoundEffect.selectedSoundName')) {
-            const updatedConfig = vscode.workspace.getConfiguration('errorSoundEffect');
-            const updatedSound = updatedConfig.get('selectedSoundName', 'Fahhh');
-            statusBarItem.tooltip = `🎵 Current Sound: ${updatedSound}\nClick to search & change sounds`;
+        if (e.affectsConfiguration('errorSoundEffect')) {
+            updateStatusBar();
         }
     });
-
     context.subscriptions.push(configWatcher);
+}
+
+function updateStatusBar() {
+    const config = vscode.workspace.getConfiguration('errorSoundEffect');
+    const enabled = config.get('enabled', true);
+    const currentSound = config.get('selectedSoundName', 'Fahhh');
+
+    if (enabled) {
+        statusBarItemSound.text = `$(music) BugLOL`;
+        statusBarItemSound.tooltip = `🎵 ${currentSound}\nClick to search & change sounds`;
+        statusBarItemSound.backgroundColor = undefined;
+
+        statusBarItemToggle.text = '$(unmute)';
+        statusBarItemToggle.tooltip = 'BugLOL is ON — click to turn off';
+        statusBarItemToggle.backgroundColor = undefined;
+    } else {
+        statusBarItemSound.text = `$(mute) BugLOL`;
+        statusBarItemSound.tooltip = `🔇 BugLOL is OFF\nClick to open sound search\nUse the $(unmute) icon to turn on`;
+        statusBarItemSound.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+
+        statusBarItemToggle.text = '$(mute)';
+        statusBarItemToggle.tooltip = 'BugLOL is OFF — click to turn on';
+        statusBarItemToggle.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    }
 }
 
 /**

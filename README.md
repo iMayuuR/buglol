@@ -5,7 +5,7 @@ Turn your frustrating debugging sessions into instant comedy! **BugLOL** automat
 <p align="center">
   <strong>Publisher:</strong> <a href="https://github.com/iMayuuR">iMayuuR</a> ·
   <strong>Namespace:</strong> <code>iMayuuR</code> ·
-  <strong>Version:</strong> <code>1.3.7</code> ·
+  <strong>Version:</strong> <code>1.5.0</code> ·
   <strong>License:</strong> MIT
 </p>
 
@@ -40,13 +40,14 @@ BugLOL is available on **both** major extension registries:
 ## ✨ Features
 
 - **🎵 100k+ Sound Library** — Search through over 100,000 meme sounds and sound effects from a massive online database.
+- **🎧 Sound Preview** — Preview any sound before selecting it! Each sound in the search panel has a ▶ play button to hear it first.
+- **🔇 On/Off Toggle** — Click the BugLOL button in the status bar to instantly toggle sounds on/off — no need to uninstall.
 - **💀 Terminal Error Detection** — Wrong command in the terminal? Sound plays instantly! Works with any failed shell command.
-- **🔊 One-Click Status Bar** — A persistent `BugLOL` button sits in your status bar. Click it anytime to search and change your error sound.
+- **🔊 One-Click Status Bar** — A persistent `BugLOL` button sits in your status bar. Click to toggle, press `Ctrl+Shift+M` to search sounds.
 - **🎉 Instant Setup** — On first install, a welcome notification guides you to pick your sound immediately. No digging through menus.
 - **⌨️ Keyboard Shortcut** — Press `Ctrl+Shift+M` (`Cmd+Shift+M` on Mac) to instantly open the sound search.
 - **🔥 Trending Sounds** — Opens with the hottest trending regional memes by default.
 - **🔍 Live Search** — Type to instantly search and discover new sounds from the global database.
-- **🎧 Full Playback** — Plays the complete audio — no cut-offs!
 - **📦 Zero Bloat** — Downloads and caches only the sound you select. No heavy audio files bundled.
 
 ## 🚀 Quick Start
@@ -66,6 +67,7 @@ BugLOL watches your editor's diagnostics in real-time. Every time a **new error*
 
 | Setting | Description | Default |
 |---|---|---|
+| `errorSoundEffect.enabled` | Enable or disable BugLOL sounds | `true` |
 | `errorSoundEffect.selectedSoundName` | The currently selected sound name | `Fahhh` |
 | `errorSoundEffect.selectedSoundFilename` | The downloaded MP3 filename | `fahhh_KcgAXfs.mp3` |
 
@@ -141,6 +143,14 @@ which paplay
 ---
 
 ## 📋 Changelog
+
+### v1.5.0 — Two status bar items
+- **Status bar:** Two separate items — **BugLOL** (click opens sound search) and **speaker icon** (click toggles on/off). Both show mute/off state when disabled.
+
+### v1.4.0 — Sound Preview & On/Off Toggle
+- 🎧 **Sound Preview** — ▶ button on each sound in search panel to hear it before selecting
+- 🔇 **On/Off Toggle** — Click BugLOL status bar button to toggle sounds without uninstalling
+- Status bar shows mute/unmute state with visual feedback
 
 ### v1.3.5 — Cross-Platform & Stability
 - 🪟 **Windows**: Removed PowerShell entirely — uses `wscript.exe` + VBScript. Works on all Windows versions with zero execution policy issues.

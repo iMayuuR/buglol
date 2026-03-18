@@ -72,29 +72,50 @@ function playSoundLinux(soundPath, playerIndex = 0) {
     proc.on('exit', () => { if (currentSoundProcess === proc) currentSoundProcess = null; });
 }
 
-// ─── Unified playSound ───────────────────────────────────────────────────────
+// ─── Play any sound file (used for preview + error sounds) ──────────────────
 /**
- * Plays the selected error sound. Cross-platform.
+ * Plays an arbitrary MP3 file. Cross-platform.
+ * @param {vscode.ExtensionContext} context
+ * @param {string} filePath
+ */
+function playSoundFile(context, filePath) {
+    if (!fs.existsSync(filePath)) {
+        console.warn(`[BugLOL] Sound file not found: ${filePath}`);
+        return;
+    }
+    if (PLATFORM === 'win32') {
+        playSoundWindows(context, filePath);
+    } else if (PLATFORM === 'darwin') {
+        playSoundMac(filePath);
+    } else {
+        playSoundLinux(filePath);
+    }
+}
+
+/**
+ * Stops any currently playing sound.
+ */
+function stopSound() {
+    if (currentSoundProcess && !currentSoundProcess.killed) {
+        try { currentSoundProcess.kill(); } catch (_) { }
+        currentSoundProcess = null;
+    }
+}
+
+// ─── Unified playSound (reads from config) ──────────────────────────────────
+/**
+ * Plays the selected error sound. Cross-platform. Respects enabled setting.
  * @param {vscode.ExtensionContext} context
  */
 function playSound(context) {
     const config = vscode.workspace.getConfiguration('errorSoundEffect');
+    if (!config.get('enabled', true)) return;
+
     const selectedSoundFile = config.get('selectedSoundFilename', '');
     if (!selectedSoundFile) return;
 
     const soundPath = path.join(context.globalStorageUri.fsPath, selectedSoundFile);
-    if (!fs.existsSync(soundPath)) {
-        console.warn(`[BugLOL] Sound file not found: ${soundPath}`);
-        return;
-    }
-
-    if (PLATFORM === 'win32') {
-        playSoundWindows(context, soundPath);
-    } else if (PLATFORM === 'darwin') {
-        playSoundMac(soundPath);
-    } else {
-        playSoundLinux(soundPath);
-    }
+    playSoundFile(context, soundPath);
 }
 
 /**
@@ -155,4 +176,4 @@ function activate(context) {
     });
 }
 
-module.exports = { activate };
+module.exports = { activate, playSoundFile, stopSound };

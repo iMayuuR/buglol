@@ -29,10 +29,11 @@ function activate(context) {
         }
 
         // ── Toggle command ────────────────────────────────────────────────────
-        const toggleDisposable = vscode.commands.registerCommand('errorSoundEffect.toggleEnabled', () => {
+        const toggleDisposable = vscode.commands.registerCommand('errorSoundEffect.toggleEnabled', async () => {
             const config = vscode.workspace.getConfiguration('errorSoundEffect');
             const current = config.get('enabled', true);
-            config.update('enabled', !current, vscode.ConfigurationTarget.Global);
+            await config.update('enabled', !current, vscode.ConfigurationTarget.Global);
+            updateStatusBar();
         });
         context.subscriptions.push(toggleDisposable);
 
@@ -89,6 +90,7 @@ function createStatusBarButtons(context) {
 }
 
 function updateStatusBar() {
+    if (!statusBarItemSound || !statusBarItemToggle) return;
     const config = vscode.workspace.getConfiguration('errorSoundEffect');
     const enabled = config.get('enabled', true);
     const currentSound = config.get('selectedSoundName', 'Fahhh');

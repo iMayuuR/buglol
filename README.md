@@ -5,7 +5,7 @@ Turn your frustrating debugging sessions into instant comedy! **BugLOL** automat
 <p align="center">
   <strong>Publisher:</strong> <a href="https://github.com/iMayuuR">iMayuuR</a> ·
   <strong>Namespace:</strong> <code>iMayuuR</code> ·
-  <strong>Version:</strong> <code>1.5.1</code> ·
+  <strong>Version:</strong> <code>1.5.2</code> ·
   <strong>License:</strong> MIT
 </p>
 

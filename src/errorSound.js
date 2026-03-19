@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const path = require('path');
+const { getEnabled } = require('./enabledState.js');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
@@ -108,9 +109,9 @@ function stopSound() {
  * @param {vscode.ExtensionContext} context
  */
 function playSound(context) {
-    const config = vscode.workspace.getConfiguration('errorSoundEffect');
-    if (!config.get('enabled', true)) return;
+    if (!getEnabled(context)) return;
 
+    const config = vscode.workspace.getConfiguration('errorSoundEffect');
     const selectedSoundFile = config.get('selectedSoundFilename', '');
     if (!selectedSoundFile) return;
 

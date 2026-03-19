@@ -1,5 +1,8 @@
 const vscode = require('vscode');
+const { getEnabled, setEnabled } = require('./enabledState.js');
 
+/** @type {vscode.ExtensionContext | null} */
+let extensionContext = null;
 /** @type {vscode.StatusBarItem} */
 let statusBarItemSound;
 /** @type {vscode.StatusBarItem} */
@@ -9,6 +12,7 @@ let statusBarItemToggle;
  * @param {import('vscode').ExtensionContext} context
  */
 function activate(context) {
+    extensionContext = context;
     try {
         console.log('[BugLOL] Extension activating...');
 
@@ -28,11 +32,10 @@ function activate(context) {
             console.error('[BugLOL] Status bar failed:', err.message);
         }
 
-        // ── Toggle command ────────────────────────────────────────────────────
+        // ── Toggle command (uses globalState to avoid User Settings write) ────
         const toggleDisposable = vscode.commands.registerCommand('errorSoundEffect.toggleEnabled', async () => {
-            const config = vscode.workspace.getConfiguration('errorSoundEffect');
-            const current = config.get('enabled', true);
-            await config.update('enabled', !current, vscode.ConfigurationTarget.Global);
+            const current = getEnabled(context);
+            await setEnabled(context, !current);
             updateStatusBar();
         });
         context.subscriptions.push(toggleDisposable);
@@ -90,10 +93,9 @@ function createStatusBarButtons(context) {
 }
 
 function updateStatusBar() {
-    if (!statusBarItemSound || !statusBarItemToggle) return;
-    const config = vscode.workspace.getConfiguration('errorSoundEffect');
-    const enabled = config.get('enabled', true);
-    const currentSound = config.get('selectedSoundName', 'Fahhh');
+    if (!statusBarItemSound || !statusBarItemToggle || !extensionContext) return;
+    const enabled = getEnabled(extensionContext);
+    const currentSound = vscode.workspace.getConfiguration('errorSoundEffect').get('selectedSoundName', 'Fahhh');
 
     if (enabled) {
         statusBarItemSound.text = `$(music) BugLOL`;

@@ -2,6 +2,11 @@
 
 All notable changes to BugLOL will be documented in this file.
 
+## [1.5.3] - 2026-03-18
+
+### ⚡ Optimization
+- On/Off toggle now uses extension state for instant response; no settings file write.
+
 ## [1.5.2] - 2026-03-18
 
 ### 🔧 Maintenance
